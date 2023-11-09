@@ -65,7 +65,7 @@ class Decoder(srd.Decoder):
                             )
         self.logger = logging.getLogger()
         self.logger.addHandler(logging.StreamHandler())
-        self.logger.setLevel(logging.DEBUG)
+        self.logger.setLevel(logging.WARNING)
 
     def log_machine_state(self):
         self.logger.debug("MACHINE STATE VARIABLES")
