@@ -1,7 +1,7 @@
 #!/bin/bash
 
 SCOPY_DECODER_LOCATION=/var/lib/flatpak/app/org.adi.Scopy/arm/master/2eb23ee2c0bbd73478c4c8d7720ae584df8332dbf94a4e2ee5d4a9dfbf36b935/files/share/libsigrokdecode/decoders/
-SIGROK_CLI_DECODER_LOCATION=/usr/share/libsigrokdecode/decoders/
+SIGROK_CLI_DECODER_LOCATION=/usr/local/share/libsigrokdecode/decoders/
 WORKDIR=/home/analog/m2kirl
 ZIPFILE=/home/analog/m2kirl.zip
 SRCDIR=/home/analog/tmp
