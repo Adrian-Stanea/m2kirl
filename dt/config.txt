@@ -39,6 +39,7 @@ hdmi_force_hotplug=1
 #arm_freq=800
 
 # Uncomment some or all of these to enable the optional hardware interfaces
+dtparam=act_led_trigger=heartbeat
 #dtparam=i2c_arm=on
 #dtparam=i2s=on
 #dtparam=spi=on

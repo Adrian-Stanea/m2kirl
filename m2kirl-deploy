@@ -1,0 +1,235 @@
+#!/bin/bash
+set -e
+set -x
+
+echo USAGE: ./m2kirl-deploy \<option\>
+echo
+echo Usecase - setup in place:
+echo install_deps - install deps from internet
+echo make_build - download deps from the internet and build
+echo 
+echo Usecase - create zip file for further use
+echo pack_deps - download deps from the internet and create archive
+echo pack_build - create zip file with dependencies
+echo 
+echo Usecase - deploy from zip file \(setups without internet accessi\)
+echo unpack_deps - deploy deps from the archive
+echo unpack_build - deploy from zip file
+echo
+echo !! WARNING - this script also changes the date/time of the system !!
+echo
+SCOPY_DECODER_LOCATION=/var/lib/flatpak/app/org.adi.Scopy/arm/master/2eb23ee2c0bbd73478c4c8d7720ae584df8332dbf94a4e2ee5d4a9dfbf36b935/files/share/libsigrokdecode/decoders/
+SIGROK_CLI_DECODER_LOCATION=/usr/local/share/libsigrokdecode/decoders/
+M2KIRL_REPO=https://github.com/adisuciu/m2kirl 
+
+STAGING_DIR=/home/analog/tmp
+OUTPUT_FOLDER=/home/analog/
+ZIPFILE=m2kirl.tar
+WORKDIR=/home/analog/m2kirl
+
+LIBM2K_VER=7b31a3d
+PYADI_VER=8bcfac1
+SIGROKDECODE_VER=0c35c5c
+SIGROKCLI_VER=9d9f7b8
+PIP=pip3
+SETTIME=0
+
+settime() {
+if [ $SETTIME == 1 ]; then
+echo $@
+echo -- setting date to a default value
+sudo date -s "$@"
+echo -- restarting NTP service
+sudo service ntp stop
+sudo service ntp start
+sudo ntpd
+echo -- service restarted .. sleeping 30 seconds
+sleep 10
+date
+echo -- 10
+sleep 10
+date
+echo -- 20
+sleep 10
+date
+echo -- 30 
+fi
+}
+
+install_deps() {
+sudo apt-get install libbluetooth-dev libftdi1-dev libftdi1-doc libhidapi-dev libhidapi-hidraw0 libhidapi-libusb0 libsigrok-dev libsigrok4 ntpdate
+sudo $PIP install numpy==1.20
+sudo $PIP install pylibiio==0.23.1
+sudo $PIP install paramiko
+}
+
+pack_deps() {
+apt-get download libbluetooth-dev libftdi1-dev libftdi1-doc libhidapi-dev libhidapi-hidraw0 libhidapi-libusb0 libsigrok-dev libsigrok4 ntpdate
+$PIP download pip
+$PIP download setuptools
+$PIP download wheel
+$PIP download numpy==1.20
+$PIP download pylibiio
+$PIP download paramiko
+echo -- creating deps.tar
+tar cvf deps.tar *.whl *.deb
+ls -la deps.tar
+}
+
+unpack_deps() {
+mkdir -p $STAGING_DIR
+tar xvf deps.tar -C $STAGING_DIR
+pushd $STAGING_DIR
+sudo dpkg -i *.deb
+#$PIP install *.whl
+popd
+}
+
+m2kirl() {
+echo -- cloning m2kirls
+mkdir -p $STAGING_DIR
+pushd $STAGING_DIR
+git clone $M2KIRL_REPO m2kirl-src
+popd
+}
+
+libm2k() {
+echo -- installing libm2k
+pushd $STAGING_DIR
+git clone https://github.com/analogdevicesinc/libm2k
+cd libm2k
+git reset --hard $LIBM2K_VER 
+mkdir build && cd build
+cmake -DENABLE_TOOLS=ON -DENABLE_PYTHON=ON ../
+make
+popd
+}
+
+pyadiiio() {
+echo -- installing pyadi-iio
+pushd $STAGING_DIR
+git clone https://github.com/analogdevicesinc/pyadi-iio
+cd pyadi-iio
+git reset --hard $PYADI_VER
+popd
+}
+
+libsigrokdecode() {
+echo -- installing libsigrokdecode
+pushd $STAGING_DIR
+git clone https://github.com/sigrokproject/libsigrokdecode
+cd libsigrokdecode
+git reset --hard $SIGROKDECODE_VER
+./autogen.sh
+./configure
+make
+popd
+}
+
+sigrokcli() {
+echo -- installing sigrok-cli
+pushd $STAGING_DIR
+git clone https://github.com/sigrokproject/sigrok-cli
+cd sigrok-cli
+git reset --hard $SIGROKCLI_VER
+./autogen.sh
+./configure
+make
+popd
+}
+
+zip() {
+echo -- building zip
+#create archive
+tar -cvf $ZIPFILE -C $STAGING_DIR .
+ls -la $ZIPFILE $(basename "$0") deps.tar
+}
+
+unzip() {
+mkdir -p $STAGING_DIR
+tar xvf $ZIPFILE -C $STAGING_DIR
+}
+
+install_dt() {
+echo -- copying devicetree
+sudo cp $WORKDIR/dt/config.txt /boot/
+sudo cp $WORKDIR/dt/rpi-ad5592r-m2kirl.dtbo /boot/overlays
+}
+
+install_decoder() {
+echo -- copying decoder to scopy
+sudo cp -R $WORKDIR/decoder/ad5592r $SCOPY_DECODER_LOCATION
+
+echo -- copying decoder to sigrok-cli
+sudo cp -R $WORKDIR/decoder/ad5592r $SIGROK_CLI_DECODER_LOCATION
+}
+
+install_workdir() {
+cp -R $STAGING_DIR/m2kirl-src $WORKDIR
+}
+
+install_keyboard() {
+echo -- setting default keyboard to US
+sudo cp $WORKDIR/res/keyboard /etc/default/
+}
+
+install_libs() {
+echo -- installing libm2k
+pushd $STAGING_DIR/libm2k/build
+sudo make install
+popd
+echo -- installing pyadi-iio
+pushd $STAGING_DIR/pyadi-iio
+
+$PIP install $PIP_OPTS .
+
+popd
+echo -- installing libsigrokdecode
+pushd $STAGING_DIR/libsigrokdecode
+sudo make install
+popd
+echo -- installing sigrok-cli
+pushd $STAGING_DIR/sigrok-cli
+sudo make install
+popd
+}
+
+make_build() {
+settime "10 DEC 2023 12:45"
+m2kirl
+install_workdir
+libm2k
+pyadiiio
+libsigrokdecode
+sigrokcli
+install_keyboard
+sudo apt-get -y remove libsigrokdecode-dev sigrok-cli
+install_dt
+install_libs
+install_decoder
+}
+
+pack_build() {
+settime "17 NOV 2023 12:45"
+m2kirl
+libm2k
+pyadiiio
+libsigrokdecode
+sigrokcli
+zip
+}
+
+unpack_build() {
+settime "10 DEC 2023 12:45"
+PIP_OPTS="--no-index --find-links $STAGING_DIR"
+unzip
+install_workdir
+install_keyboard
+echo -- uninstalling sigrok-cli libsigrokdecode
+sudo apt-get -y remove libsigrokdecode-dev sigrok-cli
+install_dt
+install_libs
+install_decoder
+}
+
+$@
