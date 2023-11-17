@@ -20,11 +20,6 @@ import sigrokdecode as srd
 from common.srdhelper import bitpack_lsb, bitpack_msb, SrdIntEnum
 from .lists import *
 
-import logging
-from datetime import datetime
-import os
-
-
 (NAME_IDX, DESC_IDX) = range(2)
 Ann = SrdIntEnum.from_str('Ann', 'MOSI_REG MOSI_FIELD MISO_REG MISO_FIELD')
 St = SrdIntEnum.from_str('St', 'INVALID READBACK ADC_OP')
@@ -36,14 +31,10 @@ class Decoder(srd.Decoder):
     name = 'AD5592R'
     longname = 'Analog Devices AD5592R'
     desc = 'Analog Devices AD5592R 12-bit configurable ADC/DAC.'
-    license = 'gplv2+'
+    license = 'gplv3+'
     inputs = ['spi']
     outputs = []
     tags = ['IC', 'Analog/digital']
-    
-    options = (
-        {'id': 'v_ref', 'desc': 'Reference Voltage [V]', 'default': 2.5},
-    )
 
     annotations = (
         ('mosi-register', 'MOSI Register'),
@@ -58,40 +49,7 @@ class Decoder(srd.Decoder):
         ('miso-fields',    'MISO Fields',           (Ann.MISO_FIELD,)),
     )
 
-    def init_logger(self):
-        logging.basicConfig(filemode='w',
-                            format='%(levelname)s - %(message)s',
-                            # handlers=[logging.StreamHandler(sys.stdout)]  # Output to stdout
-                            )
-        self.logger = logging.getLogger()
-        self.logger.addHandler(logging.StreamHandler())
-        self.logger.setLevel(logging.WARNING)
-
-    def log_machine_state(self):
-        self.logger.debug("MACHINE STATE VARIABLES")
-
-        self.logger.debug("\tself.state = %s", self.state)
-        self.logger.debug("\tself.crnt_mosi_reg_name = %s",
-                          self.crnt_mosi_reg_name)
-        self.logger.debug("\tself.miso_format = %s", self.miso_fields_format)
-        self.logger.debug("\tself.miso_crnt_read = %d", self.miso_crnt_read)
-        self.logger.debug("\tself.miso_delay = %d", self.miso_delay)
-        self.logger.debug("\tself.miso_adc_op_len = %d", self.miso_adc_op_len)
-        self.logger.debug("\tself.miso_adc_op_repeat = %d",
-                          self.miso_adc_op_repeat)
-
-    def log_bits(self, bits, name):
-        self.logger.debug("LOGGING BITS")
-        self.logger.debug("\tname = %s", name)
-        self.logger.debug("\tlen(bits) = %d", len(bits))
-        for idx, bit in enumerate(bits):
-            self.logger.debug(
-                "\t\tbits[%d] = %d \t ss = %d \t es = %d", idx, bit[0], bit[1], bit[2])
-        self.logger.debug("\t\tbits value = %xh", bitpack_msb(bits, 0))
-
     def __init__(self,):
-        self.init_logger()
-
         self.MOSI_REG_READ_CMD_LIST = [
             'DAC_RD', 'CONFIG_READ_AND_LDAC', 'ADC_SEQ', 'ADC_CONFIG']
         self.reset()
@@ -105,9 +63,13 @@ class Decoder(srd.Decoder):
 
     def reset_data(self):
         '''
-            Track of current chunck of data to be decoded
+            Track current chunck of data to be decoded
+            ss_cmd (int): start of register annotation  
+            es_cmd (int): end of the register annotation  
+            nb_bits_in_frame (int): a valid frame should be 16 bits long
+            mosi (list): accumulated MOSI bits
+            miso (list): accumulated MISO bits
         '''
-        self.logger.debug("reset_data call")
         self.ss_cmd = -1
         self.es_cmd = -1
         self.nb_bits_in_frame = 0
@@ -136,20 +98,12 @@ class Decoder(srd.Decoder):
         self.put(ss, es, self.out_ann, [ann_idx, data, ])
 
     def decode_word(self):
-        """
-            - Interpret a 16bit word when accumulation of bits is complete
-        """
+        """Interpret a 16bit word when accumulation of bits is complete"""
         # Holding bits in LSB order during interpretation simplifies
         # bit field extraction. And annotation emitting routines expect
         # this reverse order of bits' timestamps.
-        self.logger.debug("decode_word call")
-        self.logger.debug("STATE = %s", self.state)
-
-        self.log_bits(self.mosi, "BEFORE REVERSE self.mosi")
         self.mosi.reverse()
         self.handle_mosi()
-
-        self.log_bits(self.miso, "BEFORE REVERSE self.miso")
         self.miso.reverse()
         self.handle_miso()
 
@@ -165,25 +119,14 @@ class Decoder(srd.Decoder):
 
         self.nb_bits_in_frame += len(cp_mosi_bits)
 
-        self.log_bits(cp_mosi_bits, "cp_mosi_bits")
-        self.log_bits(cp_miso_bits, "cp_miso_bits")
-        self.logger.debug("\t self.nb_bits = %d", self.nb_bits_in_frame)
-
     def handle_mosi(self):
-        self.logger.debug("handle_mosi call")
-
         offset, width = CTRL_REGISTERS.get('MSB_IDX')
         MSB, (_, _, ) = self.decode_bits(self.mosi, offset, width)
-
-        self.logger.debug("\t MSB = %d", MSB)
 
         if MSB == 0:  # write to the control-register
             offset, width = CTRL_REGISTERS.get('ADDR_IDX')
             addr, (_, _, ) = self.decode_bits(self.mosi, offset, width)
             name = CTRL_REGISTERS.get(addr)[NAME_IDX]
-
-            self.logger.debug(
-                "\t name = %s \t ss_cmd=%s \t es_cmd = %s", name, self.ss_cmd, self.es_cmd)
 
             self.crnt_mosi_reg_name = name
             text = ['{name}'.format(name=name),]
@@ -199,7 +142,6 @@ class Decoder(srd.Decoder):
         self.annotate_fields(self.mosi, Ann.MOSI_FIELD, field_descs)
 
     def handle_miso(self):
-        self.logger.debug("handle_miso call")
         if self.state == St.INVALID:
             text = ['Invalid data']
             self.putg(self.ss_cmd, self.es_cmd, Ann.MISO_REG, text)
@@ -244,7 +186,7 @@ class Decoder(srd.Decoder):
         # Get the register field's content and position.
         val, (ss, es, ) = self.decode_bits(bits, offset, width)
         # Have the field's content formatted, emit an annotation.
-        formatted = parser(val, self.options) if parser else '{}'.format(val)
+        formatted = parser(val) if parser else '{}'.format(val)
         if formatted is not None and formatted != "":
             text = ['{name}: {val}'.format(name=name, val=formatted)]
         else:
@@ -269,9 +211,6 @@ class Decoder(srd.Decoder):
                               width, parser)
 
     def handle_state(self):
-        self.logger.debug("handle_state call")
-        self.log_machine_state()
-
         if self.state == St.INVALID:
             self.state = self._next_ST_INVALID()
         elif self.state == St.READBACK:
@@ -281,17 +220,11 @@ class Decoder(srd.Decoder):
         else:
             raise (Exception("Invalid state"))
 
-        self.logger.debug("NEXT STATE = %s", self.state)
-        self.log_machine_state()
-
     def parse_mosi_state_cmd(self):
-        self.logger.debug("parse_mosi_state_cmd call")
-        self.logger.debug("MOSI register name = %s", self.crnt_mosi_reg_name)
-
         if self.crnt_mosi_reg_name in ['DAC_RD']:
             self.miso_fields_format = 'DAC_DATA_RD'
             return St.READBACK
-        
+
         if self.crnt_mosi_reg_name in ['CONFIG_READ_AND_LDAC',]:
             REG_RD_EN = self.decode_bits(self.mosi, 6, 1)
             if REG_RD_EN:
@@ -332,22 +265,16 @@ class Decoder(srd.Decoder):
         return self.state
 
     def _next_ST_INVALID(self):
-        self.logger.debug("_next_ST_INVALID call")
-
         if self.crnt_mosi_reg_name in self.MOSI_REG_READ_CMD_LIST:
             return self.parse_mosi_state_cmd()
         return St.INVALID
 
     def _next_ST_READBACK(self):
-        self.logger.debug("_next_ST_READBACK call")
-
         if self.crnt_mosi_reg_name in self.MOSI_REG_READ_CMD_LIST:
             return self.parse_mosi_state_cmd()
         return St.INVALID  # return to invalid state after readback
 
     def _next_ST_ADC_OP(self):
-        self.logger.debug("_next_ST_ADC_OP call")
-
         if self.crnt_mosi_reg_name in self.MOSI_REG_READ_CMD_LIST:
             return self.parse_mosi_state_cmd()
 
@@ -364,35 +291,25 @@ class Decoder(srd.Decoder):
 
     def decode(self, ss, es, data):
         ptype, _, _ = data
-        self.logger.debug("ptype = %s \t ss = %d \t es = %d", ptype, ss, es)
-
         # NOTE: CS is active-low
         if ptype == 'CS-CHANGE':
             cs_old, cs_new = data[1:]
-            self.logger.debug("\t cs_old = %d \t cs_new = %d", cs_old if cs_old else 0,
-                              cs_new if cs_new else 0)
-
-            # # start of a new 16 bit transaction
+            # start of a new 16 bit transaction
             if self.cs_falling_edge(cs_old, cs_new):
-                self.logger.debug("\tFalling edge")
-
                 self.reset_data()
-                # self.ss_cmd = ss
-
+            # end of 16 bit transaction
             if self.cs_rising_edge(cs_old, cs_new):
-                self.logger.debug("\tRising edge")
-
                 # Invalid format after transaction
                 if self.nb_bits_in_frame != 16:
                     self.reset_data()
                     return
-
                 self.ss_cmd = self.mosi[0][1]
                 self.es_cmd = self.mosi[-1][2]  # end of the word
-                
+
                 self.decode_word()
                 self.handle_state()
                 self.reset_data()
+
         if ptype == 'BITS':
             _, mosi_bits, miso_bits = data
             self.store_bits(mosi_bits, miso_bits)

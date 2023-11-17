@@ -24,7 +24,7 @@
     This decoder stacks on top of the 'spi' PD and decodes the AD5592R operations.
     
     Please note that the SPI interface uses clock polarity 1 and 
-    clock phase 0 which are not the default settings
+    clock phase 1 which are not the default settings
     
     Details:
     https://www.analog.com/media/en/technical-documentation/data-sheets/ad5592r.pdf

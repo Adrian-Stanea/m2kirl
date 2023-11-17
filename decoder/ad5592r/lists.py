@@ -1,25 +1,25 @@
-def disabled_enabled(v, options=None):
+def disabled_enabled(v):
     return 'Disabled' if v == 0 else 'Enabled'
 
 
-def dac_ch(v, options=None):
+def dac_ch(v):
     return 'DAC{0}'.format(v)
 
 
-def adc_chn(v, options=None):
+def adc_chn(v):
     return 'ADC{v}'.format(v=v)
 
 
-def empty_str(v, options=None):
+def empty_str(v):
     return ''
 
 
-def dec_to_hex(v, options=None):
+def dec_to_hex(v):
     '''Convert a number to a string with hexadecimal representation.'''
     return '0x{0:02X}'.format(v)
 
 
-def bit_indices(num, options=None):
+def bit_indices(num):
     '''Return bit indices of a number as a string where bits are set to 1.'''
     res = []
     i = 0
@@ -30,29 +30,19 @@ def bit_indices(num, options=None):
         i += 1
     return ','.join(res)
 
-def raw_voltage(v, options=None):
-    lsb_scale = options['v_ref'] / 4096
-    volts = round(v * lsb_scale, 3)
-    return '{raw}[raw], {volts}[V]'.format(raw=v, volts=volts)
-
-def raw_temperature(v, options=None):
-    v_ref = options['v_ref']
-    # pg 25: AD5592R(Rev.H)
-    temperature = 25 + ( v - (0.5 / v_ref) * 4095) / (2.654 / (2.5/v_ref))  
-    return '{raw}[raw], {temperature}[°C]'.format(raw=v, temperature=round(temperature, 1))
-    
 
 #   CTRL_REGISTERS: dict
 #       Opcode (key):  a control register
 #       Value:  tuple
 #          0:  register name : str    
 #          1:  Field Configuration (Tuple)
-#               0:  start bit    : int
-#               1:  width        : int
-#               2:  field name   : int
-#               3:  field parser : function(field_value, decoder_options) -> str
+#               0:  start bit   : int
+#               1:  width      : int
+#               2:  field name  : int
+#               3:  parsing filed custom function
+#                   display filed value if missing
 #       
-#   Special keys: 'ADDR_IDX', 'MSB_IDX' -> provide global description
+#   Special keys: 'ADDR_IDX', 'MSB_IDX' -> provide global description (fields common to all registers)
 CTRL_REGISTERS = {
     0b0000: (
         'NOP',
@@ -140,7 +130,12 @@ CTRL_REGISTERS = {
         )
     ),
     0b1001: (
-        'GPIO_OUTPUT'
+        'GPIO_OUTPUT', 
+        (
+            (0, 8, 'Logic "1" pins', bit_indices),
+            (8, 3, 'RESERVED', empty_str),
+            (11, 4, 'REG_ADDR', dec_to_hex),
+        )
     ),
     0b1010: (
         'GPIO_INPUT',
@@ -251,21 +246,22 @@ DAC_CHANNELS = {
 }
 
 #   0:  Field Configuration (Tuple)
-#       0:  start bit    : int
-#       1:  width        : int
-#       2:  field name   : int
-#       3:  field parser : function(field_value, decoder_options) -> str
+#       0:  start bit   : int
+#       1:  width      : int
+#       2:  field name  : int
+#       3 (optional):  parsing filed custom function
+#                      display filed value if missing
 MISO_READING = {
     'ADC_RESULT': (
-        (0, 12, 'ADC data', raw_voltage),
-        (12, 3, 'ADC_ADDR'),
+        (0, 12, 'ADC data'),
+        (12, 3, 'ADC_ADDR', adc_chn),
     ),
     'TMP_SENSE_RESULT': (
-        (0, 12, 'Temperature data', raw_temperature),
+        (0, 12, 'Temperature data'),
         (12, 4, 'TEMPSENSE_ADDR', empty_str),
     ),
     'DAC_DATA_RD': (
-        (0, 12, 'DAC data', raw_voltage),
+        (0, 12, 'DAC data'),
         (12, 3, 'DAC addr'),
     ),
     'REG_READ': (
