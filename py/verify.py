@@ -11,10 +11,12 @@ buffer_size = 40000
 sample_delay = -1000
 out_oversampling = 750
 spi_test_val = 3987
-#show_plot = True
+
 show_plot = False
 show_decode = False
-#show_decode = True
+calibrate = True
+press_any_key = True
+
 decode_sh = "../bash/decode.sh"
 
 m2k_uri = "ip:192.168.2.1"
@@ -24,13 +26,13 @@ def voltage4(ad):
     return ad.voltage4_adc.raw * (ad.voltage4_adc.scale / 1000.0)
 
 def voltage3_w(ad, val):
-    ad.voltage3_dac.raw  = clamp((val / ad.voltage3_dac.scale * 1000),0,4095)
+    ad.voltage3_dac.raw  = clamp((val / (ad.voltage3_dac.scale) * 1000),0,4095)
     
 def voltage3_r(ad):
     return ad.voltage3_adc.raw * (ad.voltage3_adc.scale / 1000.0)
 
 def voltage2_w(ad, val):
-    ad.voltage2_dac.raw = clamp(val / ad.voltage2_dac.scale * 1000.0, 0, 4095)
+    ad.voltage2_dac.raw = clamp((val / (ad.voltage2_dac.scale) * 1000.0), 0, 4095)
     
 def voltage2_r(ad):
     return ad.voltage2_adc.raw * (ad.voltage2_adc.scale / 1000.0)
@@ -61,6 +63,10 @@ def clamp(val , min, max):
         return max
     return val
 
+def exit_dt():
+    print("NOK  - Check devicetree/iio_info")
+    exit()
+
 def demux_digital_channels(digital_data):
     
     arr = []
@@ -69,11 +75,44 @@ def demux_digital_channels(digital_data):
         arr.append(np.array(bit))
     return arr
 
+print("Take a moment to verify the connections:")
+print("(1) Connect 1+ to X1")
+print("(2) Connect W1 to B1")
+print("(3) Connect 2+ to B2")
+print("(4) Connect provided jumper wire to B2 and CH4")
+print("(5) Connect GND (6 pins)")
+print("(6) connect the Digital interface ( 0 – MOSI, 1-MISO, 2- SCK, 3-CS)")
+print("The LED should also have a heartbeat pattern indicating that the devicetree has been written")
+
+if press_any_key:
+    input("Press enter to continue")
+
+result = hasattr(adi,"ad5592r")
+if not result:
+    print("adi does not contain ad5592r - check pyadi-iio version")
+    exit()
+   
 ad=adi.ad5592r(ad5592r_uri)
+
 m2k=libm2k.m2kOpen(m2k_uri)
+if m2k==None:
+    print("NOK - m2k not found")
+    exit()
+else:
+    print("OK  - connected to the m2k")
 
-# m2k.calibrate()
 
+result = hasattr(ad,"voltage3_dac") and hasattr(ad,"voltage2_dac")
+if not result:
+    print("NOK  - ad5592r does not have voltage3_dac or voltage2_dac")
+    exit_dt()
+    
+ad.voltage3_dac.raw=0
+ad.voltage2_dac.raw=0
+if calibrate:
+    m2k.calibrate()
+    print("OK  - calibrated M2k")
+    
 aout=m2k.getAnalogOut()
 ain=m2k.getAnalogIn()
 dig=m2k.getDigital()
@@ -96,14 +135,12 @@ trig.reset()
 
 
 if hasattr(ad,"voltage4_adc"):
-    print("OK - Check existence of ad5592r - ch4")
+    print("OK  - Check existence of ad5592r - ch4")
 else:
     print("NOK - Check existence of ad5592r - ch4")
-    print("Check devicetree/iio_info")
-    exit()
+    exit_dt()
 
 
-print("Checking M2k W1 to AD5592R-CH4 ...")
 ad.voltage4_adc.scale = ad.voltage4_adc.scale_available[0]
 
 val = voltage4(ad)
@@ -140,7 +177,7 @@ print(result, " - AD5592R-CH3-out 0V - M2k 1+: ", val)
 
 voltage3_w(ad,0)
 voltage2_w(ad,2.5)
-print("STATUS - RED LED ON")
+print("OK  - RED LED ON")
 
 val = voltage2_r(ad)
 result = verify_range(val , 2.5)
@@ -170,11 +207,11 @@ voltage3_w(ad,0) # reset voltage to 0
 outbuf = [0] * 10 + [0.5]*10 + [1]*10 + [1.5]*10
 aout.enableChannel(0, True)
 aout.push(0,outbuf)
-
+print("OK  - pushed analog out")
 #####
 ## SETUP MIXED SIGNAL MODE
 #####
-print("STATUS - SETUP MIXED SIGNAL ACQUISITION")
+
 trig.setAnalogDelay(sample_delay)
 #trig.setAnalogLevel(0, 1.2)
 #trig.setAnalogCondition(0, libm2k.RISING_EDGE_ANALOG)
@@ -189,7 +226,7 @@ trig.setDigitalCondition(3, libm2k.FALLING_EDGE_DIGITAL)
 
 #ain.startAcquisition(4000) # non-blocking capture
 #dig.startAcquisition(4000) # non-blocking capture
-print("STATUS - STARTED MIXED SIGNAL ACQUISITION")
+print("OK  - started mixed signal acquisition")
 m2k.startMixedSignalAcquisition(buffer_size)
 
 #####
@@ -198,7 +235,13 @@ m2k.startMixedSignalAcquisition(buffer_size)
 # voltage2_w(ad,0)
 ad.voltage3_dac.raw = spi_test_val # set known raw value
 v3 = ad.voltage3_adc.raw           # read raw value 
-print("STATUS - GREEN LED ON")
+print("OK  - GREEN LED ON")
+
+result = spi_test_val - v3
+if abs(result) < 100:
+    print("OK  - Value read by ADC v3 readback in range")
+else:
+    print("NOK - Value read by ADC v3 readback out of range")
 
 #####
 # Get Samples from M2k
@@ -213,12 +256,12 @@ m2k.stopMixedSignalAcquisition()
 with open("analog_capture.csv","w") as f:
     for samp in range(len(analog_data[0])):
         f.write(str(analog_data[0][samp]) + "," +str(analog_data[1][samp]) + "\n")
-print("STATUS - Saved analog data to analog_capture.csv")
+print("OK  - Saved analog data to analog_capture.csv")
 
 with open("digital_capture.csv","w") as f:
     for val in digital_data:
         f.write(str(val) + "\n")
-print("STATUS - Saved digital data to digital_capture.csv")
+print("OK  - Saved digital data to digital_capture.csv")
 
 #####
 # SEND TO SIGROK
@@ -244,7 +287,7 @@ print(result," - Sniffing MOSI, SCLK, CS - ", spi_test_val)
 result = verify_string_occurence(decoded_data, str(v3))
 print(result," - Sniffing MISO too - ", str(v3))
 
-print("STATUS - Saved decoded messages to decoded_data.txt")
+print("OK  - Saved decoded messages to decoded_data.txt")
 
 
 #####
@@ -261,16 +304,19 @@ for ch in [0,1,2,3]:
 if show_plot:
     plt.show()
 plt.savefig("plot.png")
-print("STATUS - Saved to plot.png")
+print("OK  - Saved to plot.png")
 
 #####
 # CLEANUP
 #####
-print("STATUS - CLEANUP")
-print("TEST RESULT - ", _result_overall)
-if(_result_overall == "NOK"):
-    print("Check calibration, check GND, check connections")
 
+ad.voltage3_dac.raw=0
+ad.voltage2_dac.raw=0
 aout.stop()
 trig.reset()
 libm2k.contextClose(m2k)
+
+print("OK  - CLEANUP")
+print(_result_overall, " - TEST RESULT")
+if(_result_overall == "NOK"):
+    print("Check calibration, check GND, check connections, deps, devicetree")
