@@ -1,6 +1,6 @@
 #!/bin/bash
 set -e
-set -x
+#set -x
 
 echo USAGE: ./m2kirl-deploy \<option\>
 echo
@@ -24,7 +24,8 @@ M2KIRL_REPO=https://github.com/adisuciu/m2kirl
 
 STAGING_DIR=/home/analog/tmp
 OUTPUT_FOLDER=/home/analog/
-ZIPFILE=m2kirl.tar
+BUILDZIPFILE=m2kirl-build.tar
+DEPSZIPFILE=m2kirl-deps.tar
 WORKDIR=/home/analog/m2kirl
 
 LIBM2K_VER=7b31a3d
@@ -32,17 +33,18 @@ PYADI_VER=8bcfac1
 SIGROKDECODE_VER=0c35c5c
 SIGROKCLI_VER=9d9f7b8
 PIP=pip3
-SETTIME=0
+SETTIME=1
 
 settime() {
+
 if [ $SETTIME == 1 ]; then
 echo $@
 echo -- setting date to a default value
 sudo date -s "$@"
 echo -- restarting NTP service
-sudo service ntp stop
-sudo service ntp start
-sudo ntpd
+sudo service ntp stop && echo stopping
+sudo service ntp start && echo starting
+sudo ntpd && echo ntpd
 echo -- service restarted .. sleeping 30 seconds
 sleep 10
 date
@@ -57,32 +59,37 @@ fi
 }
 
 install_deps() {
-sudo apt-get install libbluetooth-dev libftdi1-dev libftdi1-doc libhidapi-dev libhidapi-hidraw0 libhidapi-libusb0 libsigrok-dev libsigrok4 ntpdate
-sudo $PIP install numpy==1.20
-sudo $PIP install pylibiio==0.23.1
-sudo $PIP install paramiko
+sudo apt-get install libbluetooth-dev libftdi1-dev libftdi1-doc libhidapi-dev libhidapi-hidraw0 libhidapi-libusb0 libsigrok-dev libsigrok4 sntp ntp libopts25
+$PIP install --upgrade pip
+$PIP install numpy==1.20
+$PIP install pylibiio
+$PIP install paramiko
 }
 
 pack_deps() {
-apt-get download libbluetooth-dev libftdi1-dev libftdi1-doc libhidapi-dev libhidapi-hidraw0 libhidapi-libusb0 libsigrok-dev libsigrok4 ntpdate
+apt-get download libbluetooth-dev libftdi1-dev libftdi1-doc libhidapi-dev libhidapi-hidraw0 libhidapi-libusb0 libsigrok-dev libsigrok4 sntp ntp libopts25
 $PIP download pip
 $PIP download setuptools
 $PIP download wheel
 $PIP download numpy==1.20
 $PIP download pylibiio
 $PIP download paramiko
-echo -- creating deps.tar
-tar cvf deps.tar *.whl *.deb
-ls -la deps.tar
+echo -- creating $DEPSZIPFILE
+tar cvf $DEPSZIPFILE *.whl *.deb
+ls -la $DEPSZIPFILE
 }
 
 unpack_deps() {
 mkdir -p $STAGING_DIR
-tar xvf deps.tar -C $STAGING_DIR
+tar xvf $DEPSZIPFILE -C $STAGING_DIR
 pushd $STAGING_DIR
 sudo dpkg -i *.deb
 #$PIP install *.whl
 popd
+}
+
+clear_staging() {
+rm -rf $STAGING_DIR
 }
 
 m2kirl() {
@@ -102,6 +109,7 @@ git reset --hard $LIBM2K_VER
 mkdir build && cd build
 cmake -DENABLE_TOOLS=ON -DENABLE_PYTHON=ON ../
 make
+sudo make install
 popd
 }
 
@@ -111,6 +119,8 @@ pushd $STAGING_DIR
 git clone https://github.com/analogdevicesinc/pyadi-iio
 cd pyadi-iio
 git reset --hard $PYADI_VER
+$PIP install $PIP_OPTS .
+
 popd
 }
 
@@ -123,6 +133,7 @@ git reset --hard $SIGROKDECODE_VER
 ./autogen.sh
 ./configure
 make
+sudo make install
 popd
 }
 
@@ -135,19 +146,20 @@ git reset --hard $SIGROKCLI_VER
 ./autogen.sh
 ./configure
 make
+sudo make install
 popd
 }
 
 zip() {
 echo -- building zip
 #create archive
-tar -cvf $ZIPFILE -C $STAGING_DIR .
-ls -la $ZIPFILE $(basename "$0") deps.tar
+tar -cvf $BUILDZIPFILE -C $STAGING_DIR .
+ls -la $BUILDZIPFILE $(basename "$0") $DEPSZIPFILE
 }
 
 unzip() {
 mkdir -p $STAGING_DIR
-tar xvf $ZIPFILE -C $STAGING_DIR
+tar xvf $BUILDZIPFILE -C $STAGING_DIR
 }
 
 install_dt() {
@@ -165,6 +177,7 @@ sudo cp -R $WORKDIR/decoder/ad5592r $SIGROK_CLI_DECODER_LOCATION
 }
 
 install_workdir() {
+rm -rf $WORKDIR
 cp -R $STAGING_DIR/m2kirl-src $WORKDIR
 }
 
@@ -173,7 +186,7 @@ echo -- setting default keyboard to US
 sudo cp $WORKDIR/res/keyboard /etc/default/
 }
 
-install_libs() {
+deploy_libs() {
 echo -- installing libm2k
 pushd $STAGING_DIR/libm2k/build
 sudo make install
@@ -196,6 +209,7 @@ popd
 
 make_build() {
 settime "10 DEC 2023 12:45"
+clear_staging
 m2kirl
 install_workdir
 libm2k
@@ -205,12 +219,12 @@ sigrokcli
 install_keyboard
 sudo apt-get -y remove libsigrokdecode-dev sigrok-cli
 install_dt
-install_libs
 install_decoder
 }
 
 pack_build() {
 settime "17 NOV 2023 12:45"
+clear_staging
 m2kirl
 libm2k
 pyadiiio
@@ -228,7 +242,7 @@ install_keyboard
 echo -- uninstalling sigrok-cli libsigrokdecode
 sudo apt-get -y remove libsigrokdecode-dev sigrok-cli
 install_dt
-install_libs
+deploy_libs
 install_decoder
 }
 
