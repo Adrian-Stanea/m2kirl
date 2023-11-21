@@ -32,6 +32,7 @@ LIBM2K_VER=7b31a3d
 PYADI_VER=8bcfac1
 SIGROKDECODE_VER=0c35c5c
 SIGROKCLI_VER=9d9f7b8
+GENALYZER_VER=7ab380d
 PIP=pip3
 SETTIME=1
 
@@ -89,7 +90,7 @@ popd
 }
 
 clear_staging() {
-rm -rf $STAGING_DIR
+sudo rm -rf $STAGING_DIR
 }
 
 m2kirl() {
@@ -150,6 +151,20 @@ sudo make install
 popd
 }
 
+genalyzer() {
+echo -- installing genalyzer
+pushd $STAGING_DIR
+git clone https://github.com/analogdevicesinc/genalyzer
+cd genalyzer
+git reset --hard $GENALYZER_VER
+mkdir build && cd build
+cmake -DPYTHON_BINDINGS=ON -DBUILD_TESTS_EXAMPLES=ON_ ../
+make
+sudo make install
+popd
+
+}
+
 zip() {
 echo -- building zip
 #create archive
@@ -205,6 +220,11 @@ echo -- installing sigrok-cli
 pushd $STAGING_DIR/sigrok-cli
 sudo make install
 popd
+
+echo -- installing genalyzer
+pushd $STAGING_DIR/genalyzer/build
+sudo make install
+popd
 }
 
 make_build() {
@@ -216,6 +236,7 @@ libm2k
 pyadiiio
 libsigrokdecode
 sigrokcli
+genalyzer
 install_keyboard
 sudo apt-get -y remove libsigrokdecode-dev sigrok-cli
 install_dt
@@ -230,6 +251,7 @@ libm2k
 pyadiiio
 libsigrokdecode
 sigrokcli
+genalyzer
 zip
 }
 
