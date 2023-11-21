@@ -2,6 +2,8 @@
 
 import libm2k
 import adi
+import matplotlib.pyplot as plt
+import time
 
 def red(ad):
     ad.voltage2_dac.raw=4095
@@ -18,6 +20,7 @@ def stop_led(ad):
 
 buffer_size = 4000
 sample_delay = -1000
+
 m2k_uri = "ip:192.168.2.1"
 ad5592r_uri = "ip:127.0.0.1"
 
@@ -50,18 +53,25 @@ trig.setAnalogMode(0, libm2k.ANALOG)
 print("Start analog-in acquisition")
 ain.startAcquisition(buffer_size)
 
-trig.setAnalogCondition(0, libm2k.RISING_EDGE_ANALOG) # set pos-edge triggering
-green(ad) #  Turning on GREEN LED - provide pos-edge
+for i in range(5):
+    trig.setAnalogCondition(0, libm2k.RISING_EDGE_ANALOG) # set pos-edge triggering
+    green(ad) #  Turning on GREEN LED - provide pos-edge
 
-# Data started acquiring at the top, but was waiting for trigger 
-# The stimulus was sent, data should be in the buffer now
-data = ain.getSamples(buffer_size)
-ch0_data = data[0]
-#catch the transition
-delta = 10
-print(ch0_data[-sample_delay - delta : -sample_delay + delta]) 
-print(len(ch0_data))
-
+    # Data started acquiring at the top, but was waiting for trigger 
+    # The stimulus was sent, data should be in the buffer now
+    data = ain.getSamples(buffer_size) 
+    
+    plt.plot(data[0]) # plotting the received data - channel 0
+    plt.show()
+    plt.clf()
+    print(str(i+1) + "/5 - pos-edge")
+    trig.setAnalogCondition(0, libm2k.FALLING_EDGE_ANALOG) # set neg-edge triggering
+    red(ad) # Turn the RED LED on - if green was ON, this should create a neg-edge
+    data = ain.getSamples(buffer_size) # Data was still acquiring, but was waiting for the trigger
+    plt.plot(data[0])
+    plt.show()
+    plt.clf()
+    print(str(i+1) + "/5 - neg-edge")
 
 ain.stopAcquisition()
 libm2k.contextClose(m2k)
