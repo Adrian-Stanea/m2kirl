@@ -1,3 +1,4 @@
+#!/bin/python3
 # Copyright (C) 2021 Analog Devices, Inc.
 #
 # All rights reserved.
