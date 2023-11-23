@@ -1,5 +1,9 @@
 #!/bin/bash
-URI=ip:192.168.2.1
+URI=$(cat uri)
+if [ -z $URI ]; then
+URI="ip:192.168.2.1"
+fi
+echo $URI
 
 # turn on adalm2000 power supply
 echo -- restarting ad5592r

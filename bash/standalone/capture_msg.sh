@@ -1,7 +1,11 @@
 #!/bin/bash
 # this script captures red/stop/green messages from pi->ad5592r communication
 # these can be later used with ./replay
-URI=ip:192.168.2.1
+URI=$(cat uri)
+if [ -z $URI ]; then
+URI="ip:192.168.2.1"
+fi
+echo $URI
 
 m2kcli digital $URI --set sampling_frequency_in=10000000
 m2kcli digital $URI --set-channel channel=3 trigger_condition=falling_edge
