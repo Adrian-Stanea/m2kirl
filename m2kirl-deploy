@@ -270,4 +270,12 @@ install_decoder
 sudo ldconfig
 }
 
+disable_vc4() {
+sudo sed -i '/vc4-kms-v3d/s/^#*/#/g' /boot/config.txt
+}
+
+enable_vc4() {
+sudo sed -i '/vc4-kms-v3d/s/^#*//g' /boot/config.txt
+} 
+
 $@
