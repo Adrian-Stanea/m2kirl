@@ -17,6 +17,7 @@ def stop_led(ad):
     
 
 buffer_size = 4000
+sample_delay = -1000
 m2k_uri = "ip:192.168.2.1"
 ad5592r_uri = "ip:127.0.0.1"
 
@@ -40,12 +41,27 @@ ain.enableChannel(1,True)
 
 print("Setup analog-in triggering")
 trig.reset()
-green(ad) #  Turning on GREEN LED
+trig.setAnalogSource(0)
+trig.setAnalogCondition(0, libm2k.RISING_EDGE_ANALOG)
+trig.setAnalogLevel(0, 0.5)
+trig.setAnalogDelay(sample_delay)
+trig.setAnalogMode(0, libm2k.ANALOG)
 
-voltage = ain.getVoltage(0)
-print(voltage)
+print("Start analog-in acquisition")
+ain.startAcquisition(buffer_size)
+
+trig.setAnalogCondition(0, libm2k.RISING_EDGE_ANALOG) # set pos-edge triggering
+green(ad) #  Turning on GREEN LED - provide pos-edge
+
+# Data started acquiring at the top, but was waiting for trigger 
+# The stimulus was sent, data should be in the buffer now
 data = ain.getSamples(buffer_size)
 ch0_data = data[0]
-print(ch0_data) 
+#catch the transition
+delta = 10
+print(ch0_data[-sample_delay - delta : -sample_delay + delta]) 
+print(len(ch0_data))
 
+
+ain.stopAcquisition()
 libm2k.contextClose(m2k)

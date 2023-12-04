@@ -241,6 +241,7 @@ install_keyboard
 sudo apt-get -y remove libsigrokdecode-dev sigrok-cli
 install_dt
 install_decoder
+sudo ldconfig
 }
 
 pack_build() {
@@ -266,6 +267,7 @@ sudo apt-get -y remove libsigrokdecode-dev sigrok-cli
 install_dt
 deploy_libs
 install_decoder
+sudo ldconfig
 }
 
 $@

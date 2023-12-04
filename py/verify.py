@@ -12,8 +12,8 @@ sample_delay = -1000
 out_oversampling = 750
 spi_test_val = 3987
 
-show_plot = False
-show_decode = False
+show_plot = True
+show_decode = True
 calibrate = True
 press_any_key = True
 
@@ -213,19 +213,15 @@ print("OK  - pushed analog out")
 #####
 
 trig.setAnalogDelay(sample_delay)
-#trig.setAnalogLevel(0, 1.2)
-#trig.setAnalogCondition(0, libm2k.RISING_EDGE_ANALOG)
 trig.setAnalogSource(libm2k.SRC_DIGITAL_IN)
 trig.setAnalogMode(0, libm2k.ANALOG)
 trig.setDigitalDelay(sample_delay)
 trig.setDigitalSource(libm2k.SRC_NONE)
-trig.setDigitalCondition(0, libm2k.NONE)
-trig.setDigitalCondition(1, libm2k.NONE)
-trig.setDigitalCondition(2, libm2k.NONE)
+trig.setDigitalCondition(0, libm2k.NO_TRIGGER_DIGITAL)
+trig.setDigitalCondition(1, libm2k.NO_TRIGGER_DIGITAL)
+trig.setDigitalCondition(2, libm2k.NO_TRIGGER_DIGITAL)
 trig.setDigitalCondition(3, libm2k.FALLING_EDGE_DIGITAL)
 
-#ain.startAcquisition(4000) # non-blocking capture
-#dig.startAcquisition(4000) # non-blocking capture
 print("OK  - started mixed signal acquisition")
 m2k.startMixedSignalAcquisition(buffer_size)
 

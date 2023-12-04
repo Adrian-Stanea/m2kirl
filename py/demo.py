@@ -112,20 +112,16 @@ aout.push(0,outbuf)
 ## SETUP MIXED SIGNAL MODE
 #####
 print("STATUS - SETUP MIXED SIGNAL ACQUISITION")
+
 trig.setAnalogDelay(sample_delay)
-#trig.setAnalogLevel(0, 1.2)
-#trig.setAnalogCondition(0, libm2k.RISING_EDGE_ANALOG)
 trig.setAnalogSource(libm2k.SRC_DIGITAL_IN)
 trig.setAnalogMode(0, libm2k.ANALOG)
 trig.setDigitalDelay(sample_delay)
 trig.setDigitalSource(libm2k.SRC_NONE)
-trig.setDigitalCondition(0, libm2k.NONE)
-trig.setDigitalCondition(1, libm2k.NONE)
-trig.setDigitalCondition(2, libm2k.NONE)
+trig.setDigitalCondition(0, libm2k.NO_TRIGGER_DIGITAL)
+trig.setDigitalCondition(1, libm2k.NO_TRIGGER_DIGITAL)
+trig.setDigitalCondition(2, libm2k.NO_TRIGGER_DIGITAL)
 trig.setDigitalCondition(3, libm2k.FALLING_EDGE_DIGITAL)
-
-#ain.startAcquisition(4000) # non-blocking capture
-#dig.startAcquisition(4000) # non-blocking capture
 
 steps = [{"cmd":"voltage2_w(ad,0)", "description":"OFF - BOTH 0V"},
          {"cmd":"voltage3_w(ad,2.5)", "description":"WRITE V3 GREEN LED ON"},
@@ -155,6 +151,7 @@ while 1:
     digital_data = dig.getSamples(buffer_size) # GET SAMPLES FROM M2k
     m2k.stopMixedSignalAcquisition()
 
+    #convert data from ints to bytes
     data = np.array(digital_data,dtype='<u2').tobytes()
     proc = subprocess.run(["/bin/bash",decode_sh], input=data,  capture_output=True)
     decoded_data = proc.stdout.decode()
