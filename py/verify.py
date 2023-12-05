@@ -1,5 +1,14 @@
 #!/bin/python3
 
+# Script that verifies the test setup
+# Verifies connection to the M2k,
+# Availability of AD5592r
+# Verifies if devicetree is set correctly by getting the correct channels from ad5592r
+# verifies turning on the green/red LED and appropriate voltages
+# verifies if the decoding is done correctly
+# verifies the raw value received in pyadi-iio is the correct value from the decode
+# If everything was ok, the final result should be OK
+
 import libm2k
 import adi
 import matplotlib.pyplot as plt

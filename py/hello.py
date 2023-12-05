@@ -1,5 +1,7 @@
 #!/bin/python3
 
+# Simple example - turns on the green LED and then reads analog input
+
 import libm2k
 import adi
 

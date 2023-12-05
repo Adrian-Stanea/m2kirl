@@ -1,5 +1,9 @@
 #!/bin/python3
 
+# Continous acquisition according to some steps
+# plots digital and analog waveforms
+# decodes data in the process
+
 import libm2k
 import adi
 import matplotlib.pyplot as plt

@@ -1,5 +1,8 @@
 #!/bin/python3
 
+# Based on hello.py
+# Uses trigger to catch a transition of the LEDs
+
 import libm2k
 import adi
 

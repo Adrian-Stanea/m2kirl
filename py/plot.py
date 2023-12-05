@@ -1,5 +1,8 @@
 #!/bin/python3
 
+# Based on trigger.py
+# Example that showcases triggered capture - and plotting
+
 import libm2k
 import adi
 import matplotlib.pyplot as plt
