@@ -17,7 +17,7 @@ show_decode = True
 calibrate = True
 press_any_key = True
 
-decode_sh = "../bash/decode.sh"
+decode_sh = "../bash/decode_verify.sh"
 
 m2k_uri = "ip:192.168.2.1"
 ad5592r_uri = "ip:127.0.0.1"
