@@ -27,6 +27,7 @@ STAGING_DIR=/home/analog/tmp
 OUTPUT_FOLDER=/home/analog/
 BUILDZIPFILE=m2kirl-build.tar
 DEPSZIPFILE=m2kirl-deps.tar
+EXTRASZIPFILE=m2kirl-extras.tar
 WORKDIR=/home/analog/m2kirl
 WORKDIR_HSTPWI=/home/analog/ftc23-hstpwi
 
@@ -283,6 +284,14 @@ install_dt
 deploy_libs
 install_decoder
 sudo ldconfig
+}
+
+pack_extras() {
+tar -cvf m2kirl-extras.tar -C ./extras .
+}
+
+unpack_extras() {
+tar xvf $EXTRASZIPFILE -C /home/analog/Desktop/
 }
 
 disable_vc4() {
