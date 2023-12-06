@@ -180,13 +180,13 @@ popd
 zip() {
 echo -- building zip
 #create archive
-tar -cvf $BUILDZIPFILE -C $STAGING_DIR .
+sudo tar -cvf $BUILDZIPFILE -C $STAGING_DIR .
 ls -la $BUILDZIPFILE $(basename "$0") $DEPSZIPFILE
 }
 
 unzip() {
 mkdir -p $STAGING_DIR
-tar xvf $BUILDZIPFILE -C $STAGING_DIR
+sudo tar xvf $BUILDZIPFILE -C $STAGING_DIR
 }
 
 install_dt() {
@@ -284,6 +284,15 @@ install_dt
 deploy_libs
 install_decoder
 sudo ldconfig
+}
+
+unpack_all() {
+	unpack_deps
+	unpack_build
+	unpack_extras
+	echo "The system will now reboot. Don't forget to run verify scripts after reboot"
+	read -p "Press enter to reboot / ctrl+c to skip"
+	reboot
 }
 
 pack_extras() {
