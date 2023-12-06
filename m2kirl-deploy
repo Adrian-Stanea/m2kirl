@@ -63,20 +63,24 @@ fi
 }
 
 install_deps() {
-sudo apt-get install libbluetooth-dev libftdi1-dev libftdi1-doc libhidapi-dev libhidapi-hidraw0 libhidapi-libusb0 libsigrok-dev libsigrok4 sntp ntp libopts25
+sudo apt-get install libbluetooth-dev libftdi1-dev libftdi1-doc libhidapi-dev libhidapi-hidraw0 libhidapi-libusb0 libsigrok-dev libsigrok4 sntp ntp libopts25 #libopenblas-dev libopenblas-pthread-dev libopenblas0 libopenblas0-pthread
 $PIP install --upgrade pip
-$PIP install numpy==1.20
+sudo apt remove -y python3-matplotlib
+$PIP install matplotlib==3.8.2
+#$PIP install scipy==1.11.2
 $PIP install pylibiio
 $PIP install paramiko
 }
 
 pack_deps() {
-apt-get download libbluetooth-dev libftdi1-dev libftdi1-doc libhidapi-dev libhidapi-hidraw0 libhidapi-libusb0 libsigrok-dev libsigrok4 sntp ntp libopts25
+apt-get download libbluetooth-dev libftdi1-dev libftdi1-doc libhidapi-dev libhidapi-hidraw0 libhidapi-libusb0 libsigrok-dev libsigrok4 sntp ntp libopts25 #libopenblas-dev libopenblas-pthread-dev libopenblas0 libopenblas0-pthread
 $PIP download pip
 $PIP download setuptools
 $PIP download wheel
-$PIP download numpy==1.20
+#$PIP download numpy==1.20
 $PIP download pylibiio
+$PIP download matplotlib==3.8.2
+#$PIP download scipy==1.11.2
 $PIP download paramiko
 echo -- creating $DEPSZIPFILE
 tar cvf $DEPSZIPFILE *.whl *.deb
@@ -220,12 +224,18 @@ echo -- installing libm2k
 pushd $STAGING_DIR/libm2k/build
 sudo make install
 popd
+
+pushd $STAGING_DIR
+sudo apt -y remove python3-matplotlib
+$PIP install $PIP_OPTS matplotlib==3.8.2
+#$PIP install $PIP_OPTS scipy==1.11.2
+popd
+
 echo -- installing pyadi-iio
 pushd $STAGING_DIR/pyadi-iio
-
 $PIP install $PIP_OPTS .
-
 popd
+
 echo -- installing libsigrokdecode
 pushd $STAGING_DIR/libsigrokdecode
 sudo make install
