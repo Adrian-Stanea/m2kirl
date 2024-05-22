@@ -1,0 +1,89 @@
+/dts-v1/;
+
+/ {
+	compatible = "brcm,bcm2835";
+
+	fragment@1 {
+		target = <0xffffffff>;
+
+		__overlay__ {
+			#size-cells = <0x00>;
+			#address-cells = <0x01>;
+			status = "okay";
+			clock-frequency = <0x61a80>;
+
+			ad5593r@10 {
+				compatible = "adi,ad5593r";
+				reg = <0x10>;
+				phandle = <0x01>;
+
+				channel@0 {
+					reg = <0x00>;
+					adi,mode = <0x03>;
+					adi,off-state = <0x00>;
+				};
+
+				channel@1 {
+					reg = <0x01>;
+					adi,mode = <0x03>;
+					adi,off-state = <0x00>;
+				};
+
+				channel@2 {
+					reg = <0x02>;
+					adi,mode = <0x03>;
+					adi,off-state = <0x00>;
+				};
+
+				channel@3 {
+					reg = <0x03>;
+					adi,mode = <0x03>;
+					adi,off-state = <0x00>;
+				};
+
+				channel@4 {
+					reg = <0x04>;
+					adi,mode = <0x03>;
+					adi,off-state = <0x00>;
+				};
+
+				channel@5 {
+					reg = <0x05>;
+					adi,mode = <0x03>;
+					adi,off-state = <0x00>;
+				};
+
+				channel@6 {
+					reg = <0x06>;
+					adi,mode = <0x03>;
+					adi,off-state = <0x00>;
+				};
+
+				channel@7 {
+					reg = <0x07>;
+					adi,mode = <0x03>;
+					adi,off-state = <0x00>;
+				};
+			};
+		};
+	};
+
+	__overrides__ {
+		addr = [00 00 00 01 72 65 67 3a 30 00];
+	};
+
+	__symbols__ {
+		ad5593r = "/fragment@1/__overlay__/ad5593r@10";
+	};
+
+	__fixups__ {
+		i2c1 = "/fragment@1:target:0";
+	};
+
+	__local_fixups__ {
+
+		__overrides__ {
+			addr = <0x00>;
+		};
+	};
+};
