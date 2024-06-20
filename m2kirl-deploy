@@ -197,14 +197,17 @@ install_dt() {
 echo -- copying devicetree
 sudo cp $WORKDIR/dt/config.txt /boot/
 sudo cp $WORKDIR/dt/rpi-ad5592r-m2kirl.dtbo /boot/overlays
+sudo cp $WORKDIR/dt/rpi-ad5593r-m2kirl.dtbo /boot/overlays
 }
 
 install_decoder() {
 echo -- copying decoder to scopy
 sudo cp -R $WORKDIR/decoder/ad5592r $SCOPY_DECODER_LOCATION
+sudo cp -R $WORKDIR/decoder/ad5593r $SCOPY_DECODER_LOCATION
 
 echo -- copying decoder to sigrok-cli
 sudo cp -R $WORKDIR/decoder/ad5592r $SIGROK_CLI_DECODER_LOCATION
+sudo cp -R $WORKDIR/decoder/ad5593r $SIGROK_CLI_DECODER_LOCATION
 }
 
 install_workdir() {
